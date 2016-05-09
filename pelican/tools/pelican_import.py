@@ -15,7 +15,7 @@ from codecs import open
 import pytz
 
 from six.moves.urllib.error import URLError
-from six.moves.urllib.parse import urlparse
+from six.moves.urllib.parse import quote, urlparse
 from six.moves.urllib.request import urlretrieve
 
 # because logging.setLoggerClass has to be called before logging.getLogger
@@ -692,7 +692,8 @@ def download_attachments(output_path, urls):
             os.makedirs(full_path)
         print('downloading {}'.format(filename))
         try:
-            urlretrieve(url, os.path.join(full_path, filename))
+            quote_url = quote(url, safe="%/:=&?~#+!$,;'@()*[]")
+            urlretrieve(quote_url, os.path.join(full_path, filename))
             locations.append(os.path.join(localpath, filename))
         except (URLError, IOError) as e:
             # Python 2.7 throws an IOError rather Than URLError
