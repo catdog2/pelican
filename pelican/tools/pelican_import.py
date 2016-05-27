@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
 
+from collections import namedtuple, defaultdict
 import argparse
 import logging
 import os
@@ -820,6 +821,17 @@ def fields2pelican(
         urls = set(attachments[None])
         download_attachments(output_path, urls, successful_url_cache)
 
+def gentrmap(items):
+    tpl = namedtuple("tritem", "id other_id lang")
+    pairs = ((i,j) for i in items for j in items if i["trid"] == j["trid"]
+             and i["element_id"] != j["element_id"])
+    trmap = {}
+    for i,j in pairs:
+        trmap[i["element_id"]] = tpl(i["element_id"], j["element_id"], i["language_code"])
+        trmap[j["element_id"]] = tpl(j["element_id"], i["element_id"], j["language_code"])
+
+    return trmap
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -953,7 +965,7 @@ def main():
         attachments, illustrations = None
 
     with open(args.trmapping) as f:
-        trmapping = json.load(f)
+        trmapping = gentrmap(json.load(f))
 
     # init logging
     init()
