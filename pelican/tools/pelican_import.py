@@ -555,10 +555,10 @@ def build_header(title, date, author, categories, tags, slug,
         header += ':date: %s\n' % date
     if author:
         header += ':author: %s\n' % author
-    if categories:
-        header += ':category: %s\n' % ', '.join(categories)
-    if tags:
-        header += ':tags: %s\n' % ', '.join(tags)
+#    if categories:
+#        header += ':category: %s\n' % categories[0]
+    if tags or categories:
+        header += ':tags: %s\n' % ', '.join(set(tags or []).union(set(categories or [])))
     if slug:
         header += ':slug: %s\n' % slug
     if status:
@@ -572,7 +572,8 @@ def build_header(title, date, author, categories, tags, slug,
     if event_data:
         header += ':event-start: %s\n' % event_data.start
         header += ':event-end: %s\n' % event_data.end
-        header += ':event-location: %s\n' % event_data.location
+        if event_data.location:
+            header += ':event-location: %s\n' % event_data.location
 
     header += '\n'
     return header
