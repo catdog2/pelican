@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import time
+import json
 
 from codecs import open
 
@@ -709,7 +710,7 @@ def fields2pelican(
         fields, out_markup, output_path,
         dircat=False, strip_raw=False, disable_slugs=False,
         dirpage=False, filename_template=None, filter_author=None,
-        wp_custpost=False, wp_attach=False, attachments=None):
+        wp_custpost=False, wp_attach=False, attachments=None, trmapping=None):
 
     successful_url_cache = set()
 
@@ -874,6 +875,9 @@ def main():
         '--timezone', dest='timezone',
         help='timezone of the pelican blog, uses post_date_gmt instead of '
              'post_date (Wordpress import only)')
+    parser.add_argument(
+        '--trmapping', dest='trmapping',
+        help='trmapping (Wordpress import only)')
 
     args = parser.parse_args()
 
@@ -924,6 +928,9 @@ def main():
     else:
         attachments = None
 
+    with open(args.trmapping) as f:
+        trmapping = json.load(f)
+
     # init logging
     init()
     fields2pelican(fields, args.markup, args.output,
@@ -934,4 +941,5 @@ def main():
                    filter_author=args.author,
                    wp_custpost=args.wp_custpost or False,
                    wp_attach=args.wp_attach or False,
-                   attachments=attachments or None)
+                   attachments=attachments or None,
+                   trmapping=trmapping)
