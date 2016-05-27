@@ -219,8 +219,12 @@ def wp2fields(xml, wp_custpost=False, timezone=None):
                     pass
                 else:
                     kind = post_type
+
+            postmeta = {m.find("meta_key").string : m.find("meta_value").string
+                        for m in item.find_all("postmeta")}
+
             yield (title, content, filename, date, author, categories,
-                   tags, status, kind, 'wp-html')
+                   tags, status, kind, postmeta, 'wp-html')
 
 
 def dc2fields(file):
@@ -732,7 +736,7 @@ def fields2pelican(
     successful_url_cache = set()
 
     for (title, content, filename, date, author, categories, tags, status,
-            kind, in_markup) in fields:
+            kind, postmeta, in_markup) in fields:
         if filter_author and filter_author != author:
             continue
         realfilename = post_name_map.get(filename) or filename
@@ -772,11 +776,13 @@ def fields2pelican(
             header = build_header(title, date, author, categories,
                                   tags, slug, status, attached_files,
                                   illustration, lang)
+        filenamepart = realfilename
         if lang:
-            realfilename += "." + lang
+            filenamepart += "." + lang
 
+        print(postmeta)
         out_filename = get_out_filename(
-            output_path, realfilename, ext, kind, dirpage, dircat,
+            output_path, filenamepart, ext, kind, dirpage, dircat,
             categories, wp_custpost)
         print(out_filename)
 
