@@ -775,6 +775,7 @@ def fields2pelican(
         except:
             lang = None
 
+        event_data = None
         if kind == "event":
             try:
                 ev_start = postmeta["_event_start_date"] + " " + postmeta["_event_start_time"][:-3]
