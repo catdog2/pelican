@@ -153,7 +153,8 @@ def wp2fields(xml, wp_custpost=False, timezone=None):
     items = get_items(xml)
     for item in items:
 
-        if item.find('status').string in ["publish", "draft"]:
+        #if item.find('status').string in ["publish", "draft"]:
+        if item.find('status').string in ["publish"]:
 
             try:
                 # Use HTMLParser due to issues with BeautifulSoup 3
