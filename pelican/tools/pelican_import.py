@@ -544,7 +544,8 @@ def feed2fields(file):
 
 
 def build_header(title, date, author, categories, tags, slug,
-                 status=None, attachments=None, illustration=None, lang=None):
+                 status=None, attachments=None, illustration=None, lang=None,
+                 event_data=None):
     """Build a header from a list of fields"""
 
     from docutils.utils import column_width
@@ -568,6 +569,11 @@ def build_header(title, date, author, categories, tags, slug,
         header += ':illustration: %s\n' % illustration
     if lang:
         header += ':lang: %s\n' % lang
+    if event_data:
+        header += ':event-start: %s\n' % event_data.start
+        header += ':event-end: %s\n' % event_data.end
+        header += ':event-location: %s\n' % event_data.location
+
     header += '\n'
     return header
 
@@ -725,15 +731,16 @@ def download_attachments(output_path, urls, successful_url_cache):
             logger.warning("No file could be downloaded from %s\n%s", url, e)
     return locations
 
-
 def fields2pelican(
         fields, out_markup, output_path,
         dircat=False, strip_raw=False, disable_slugs=False,
         dirpage=False, filename_template=None, filter_author=None,
         wp_custpost=False, wp_attach=False, attachments=None, trmapping=None,
-        illustrations=None, post_name_map=None):
+        illustrations=None, post_name_map=None, loc_map=None):
 
     successful_url_cache = set()
+
+    Evdata = namedtuple("EventData", "start end location")
 
     for (title, content, filename, date, author, categories, tags, status,
             kind, postmeta, in_markup) in fields:
@@ -755,7 +762,7 @@ def fields2pelican(
                 illustration = download_attachments(output_path,
                                                         [illustrations[filename]],
                                                       successful_url_cache)
-            illustration = illustration[0] if illustration else None
+            illustration = illustration[0] if illustration else "header/branch_header.jpg"
 
         else:
             attached_files = None
@@ -766,6 +773,17 @@ def fields2pelican(
         except:
             lang = None
 
+        if kind == "event":
+            try:
+                ev_start = postmeta["_event_start_date"] + " " + postmeta["_event_start_time"][:-3]
+                ev_end = postmeta["_event_end_date"] + " " + postmeta["_event_end_time"][:-3]
+                loc_id = postmeta.get("_location_id")
+                location = loc_map.get(loc_id)
+                event_data = Evdata(ev_start,ev_end,location)
+            except:
+                event_data = None
+
+
         ext = get_ext(out_markup, in_markup)
         if ext == '.md':
             header = build_markdown_header(
@@ -775,12 +793,11 @@ def fields2pelican(
             out_markup = 'rst'
             header = build_header(title, date, author, categories,
                                   tags, slug, status, attached_files,
-                                  illustration, lang)
+                                  illustration, lang, event_data)
         filenamepart = realfilename
         if lang:
             filenamepart += "." + lang
 
-        print(postmeta)
         out_filename = get_out_filename(
             output_path, filenamepart, ext, kind, dirpage, dircat,
             categories, wp_custpost)
@@ -868,6 +885,19 @@ def gen_post_name_map(xml, trmap):
             pnmap[post_id] = post_name
 
     return pnmap
+
+def gen_loc_map(xml):
+    locs = {}
+    items = get_items(xml)
+    for item in items:
+        if item.find("post_type", string=re.compile("location")):
+            try:
+                loc_id = item.find("meta_key", string=re.compile("_location_id")).\
+                     parent.find("meta_value").string
+                locs[loc_id] = item.find("title").string
+            except:
+                pass
+    return locs
 
 
 def main():
@@ -1006,6 +1036,8 @@ def main():
 
     post_name_map = gen_post_name_map(args.input,trmapping)
 
+    locs = gen_loc_map(args.input)
+
     # init logging
     init()
     fields2pelican(fields, args.markup, args.output,
@@ -1019,4 +1051,5 @@ def main():
                    attachments=attachments or None,
                    trmapping=trmapping,
                    illustrations=illustrations,
-                   post_name_map=post_name_map)
+                   post_name_map=post_name_map,
+                   loc_map=locs)
