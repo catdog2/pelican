@@ -647,29 +647,34 @@ def get_attachments(xml):
     items = get_items(xml)
     names = {}
     attachments = []
+    post_thumb = {}
     for item in items:
         kind = item.find('post_type').string
         filename = item.find('post_name').string
         post_id = item.find('post_id').string
 
         if kind == 'attachment':
-            illu = bool(item.find(string=re.compile(r"(flatdesign_post_preview|flatdesign_header_image)")))
-
             attachments.append((item.find('post_parent').string,
-                                item.find('attachment_url').string, illu))
+                                item.find('attachment_url').string, post_id))
         else:
             filename = get_filename(filename, post_id)
             names[post_id] = filename
-    attachedposts = {}
+            thumb = item.find("meta_key", string=re.compile("_thumbnail_id"))
+            if thumb:
+                thumb_id = thumb.parent.find("meta_value").string
+                post_thumb[post_id] = thumb_id
     illustrations = {}
-    for parent, url, illu in attachments:
+    attachedposts = {}
+    for parent, url, aid in attachments:
         try:
             parent_name = names[parent]
         except KeyError:
             # attachment's parent is not a valid post
             parent_name = None
-        if illu:
+
+        if post_thumb.get(parent) == aid:
             illustrations[parent_name] = url
+
         try:
             attachedposts[parent_name].append(url)
         except KeyError:
