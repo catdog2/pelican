@@ -120,7 +120,7 @@ def decode_wp_content(content, br=True):
     return content
 
 
-def get_items(xml):
+def get_items(xml, getsoup=False):
     """Opens a WordPress xml file and returns a list of items"""
     try:
         from bs4 import BeautifulSoup
@@ -131,15 +131,19 @@ def get_items(xml):
     with open(xml, encoding='utf-8') as infile:
         xmlfile = infile.read()
     soup = BeautifulSoup(xmlfile, "xml")
+    if getsoup:
+        return soup
     items = soup.rss.channel.findAll('item')
     return items
 
 
 def get_filename(filename, post_id):
-    if filename is not None:
-        return filename
-    else:
-        return post_id
+    #if filename is not None:
+    #    return filename
+    #else:
+    #    return post_id
+    return post_id
+
 
 
 def wp2fields(xml, wp_custpost=False, timezone=None):
@@ -647,7 +651,7 @@ def get_attachments(xml):
     items = get_items(xml)
     names = {}
     attachments = []
-    post_thumb = {}
+    thumbs = {}
     for item in items:
         kind = item.find('post_type').string
         filename = item.find('post_name').string
@@ -662,18 +666,17 @@ def get_attachments(xml):
             thumb = item.find("meta_key", string=re.compile("_thumbnail_id"))
             if thumb:
                 thumb_id = thumb.parent.find("meta_value").string
-                post_thumb[post_id] = thumb_id
+                thumbs[thumb_id] = filename
     illustrations = {}
     attachedposts = {}
     for parent, url, aid in attachments:
+        illustrations[thumbs.get(aid)] = url
+
         try:
             parent_name = names[parent]
         except KeyError:
             # attachment's parent is not a valid post
             parent_name = None
-
-        if post_thumb.get(parent) == aid:
-            illustrations[parent_name] = url
 
         try:
             attachedposts[parent_name].append(url)
@@ -739,6 +742,7 @@ def fields2pelican(
             except KeyError:
                 attached_files = None
 
+            illustration = None
             if filename in illustrations:
                 illustration = download_attachments(output_path,
                                                         [illustrations[filename]],
