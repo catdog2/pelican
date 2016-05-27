@@ -535,7 +535,7 @@ def feed2fields(file):
 
 
 def build_header(title, date, author, categories, tags, slug,
-                 status=None, attachments=None):
+                 status=None, attachments=None, illustration=None):
     """Build a header from a list of fields"""
 
     from docutils.utils import column_width
@@ -555,6 +555,8 @@ def build_header(title, date, author, categories, tags, slug,
         header += ':status: %s\n' % status
     if attachments:
         header += ':attachments: %s\n' % ', '.join(attachments)
+    if illustration:
+        header += ':illustration: %s\n' % illustration
     header += '\n'
     return header
 
@@ -645,32 +647,35 @@ def get_attachments(xml):
     items = get_items(xml)
     names = {}
     attachments = []
-
     for item in items:
         kind = item.find('post_type').string
         filename = item.find('post_name').string
         post_id = item.find('post_id').string
 
         if kind == 'attachment':
+            illu = bool(item.find(string=re.compile(r"(flatdesign_post_preview|flatdesign_header_image)")))
+
             attachments.append((item.find('post_parent').string,
-                                item.find('attachment_url').string))
+                                item.find('attachment_url').string, illu))
         else:
             filename = get_filename(filename, post_id)
             names[post_id] = filename
     attachedposts = {}
-    for parent, url in attachments:
+    illustrations = {}
+    for parent, url, illu in attachments:
         try:
             parent_name = names[parent]
         except KeyError:
             # attachment's parent is not a valid post
             parent_name = None
-
+        if illu:
+            illustrations[parent_name] = url
         try:
             attachedposts[parent_name].append(url)
         except KeyError:
             attachedposts[parent_name] = []
             attachedposts[parent_name].append(url)
-    return attachedposts
+    return (attachedposts, illustrations)
 
 
 def download_attachments(output_path, urls, successful_url_cache):
@@ -710,7 +715,8 @@ def fields2pelican(
         fields, out_markup, output_path,
         dircat=False, strip_raw=False, disable_slugs=False,
         dirpage=False, filename_template=None, filter_author=None,
-        wp_custpost=False, wp_attach=False, attachments=None, trmapping=None):
+        wp_custpost=False, wp_attach=False, attachments=None, trmapping=None,
+        illustrations=None):
 
     successful_url_cache = set()
 
@@ -727,8 +733,16 @@ def fields2pelican(
                                                       successful_url_cache)
             except KeyError:
                 attached_files = None
+
+            if filename in illustrations:
+                illustration = download_attachments(output_path,
+                                                        [illustrations[filename]],
+                                                      successful_url_cache)
+            illustration = illustration[0] if illustration else None
+
         else:
             attached_files = None
+            illustration = None
 
         ext = get_ext(out_markup, in_markup)
         if ext == '.md':
@@ -738,7 +752,8 @@ def fields2pelican(
         else:
             out_markup = 'rst'
             header = build_header(title, date, author, categories,
-                                  tags, slug, status, attached_files)
+                                  tags, slug, status, attached_files,
+                                  illustration)
 
         out_filename = get_out_filename(
             output_path, filename, ext, kind, dirpage, dircat,
@@ -924,9 +939,9 @@ def main():
         fields = feed2fields(args.input)
 
     if args.wp_attach:
-        attachments = get_attachments(args.input)
+        attachments, illustrations = get_attachments(args.input)
     else:
-        attachments = None
+        attachments, illustrations = None
 
     with open(args.trmapping) as f:
         trmapping = json.load(f)
@@ -942,4 +957,5 @@ def main():
                    wp_custpost=args.wp_custpost or False,
                    wp_attach=args.wp_attach or False,
                    attachments=attachments or None,
-                   trmapping=trmapping)
+                   trmapping=trmapping,
+                   illustrations=illustrations)
