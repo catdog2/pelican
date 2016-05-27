@@ -540,7 +540,7 @@ def feed2fields(file):
 
 
 def build_header(title, date, author, categories, tags, slug,
-                 status=None, attachments=None, illustration=None):
+                 status=None, attachments=None, illustration=None, lang=None):
     """Build a header from a list of fields"""
 
     from docutils.utils import column_width
@@ -562,6 +562,8 @@ def build_header(title, date, author, categories, tags, slug,
         header += ':attachments: %s\n' % ', '.join(attachments)
     if illustration:
         header += ':illustration: %s\n' % illustration
+    if lang:
+        header += ':lang: %s\n' % lang
     header += '\n'
     return header
 
@@ -725,7 +727,7 @@ def fields2pelican(
         dircat=False, strip_raw=False, disable_slugs=False,
         dirpage=False, filename_template=None, filter_author=None,
         wp_custpost=False, wp_attach=False, attachments=None, trmapping=None,
-        illustrations=None):
+        illustrations=None, post_name_map=None):
 
     successful_url_cache = set()
 
@@ -733,7 +735,8 @@ def fields2pelican(
             kind, in_markup) in fields:
         if filter_author and filter_author != author:
             continue
-        slug = not disable_slugs and filename or None
+        realfilename = post_name_map.get(filename) or filename
+        slug = not disable_slugs and realfilename or None
 
         if wp_attach and attachments:
             try:
@@ -754,6 +757,11 @@ def fields2pelican(
             attached_files = None
             illustration = None
 
+        try:
+            lang = trmapping[filename].lang
+        except:
+            lang = None
+
         ext = get_ext(out_markup, in_markup)
         if ext == '.md':
             header = build_markdown_header(
@@ -763,10 +771,12 @@ def fields2pelican(
             out_markup = 'rst'
             header = build_header(title, date, author, categories,
                                   tags, slug, status, attached_files,
-                                  illustration)
+                                  illustration, lang)
+        if lang:
+            realfilename += "." + lang
 
         out_filename = get_out_filename(
-            output_path, filename, ext, kind, dirpage, dircat,
+            output_path, realfilename, ext, kind, dirpage, dircat,
             categories, wp_custpost)
         print(out_filename)
 
@@ -848,6 +858,8 @@ def gen_post_name_map(xml, trmap):
         trentry = trmap.get(post_id)
         if trentry and trentry.lang == "de":
             pnmap[post_id] = pnmap.get(trentry.other_id) or post_name
+        elif not trentry or trentry.lang not in ("de","en"):
+            pnmap[post_id] = post_name
 
     return pnmap
 
@@ -1000,4 +1012,5 @@ def main():
                    wp_attach=args.wp_attach or False,
                    attachments=attachments or None,
                    trmapping=trmapping,
-                   illustrations=illustrations)
+                   illustrations=illustrations,
+                   post_name_map=post_name_map)
