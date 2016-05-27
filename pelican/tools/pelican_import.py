@@ -832,6 +832,25 @@ def gentrmap(items):
 
     return trmap
 
+def gen_post_name_map(xml, trmap):
+    items = get_items(xml)
+    pnmap = {}
+    for item in items:
+        post_name = item.find("post_name").string
+        post_id = item.find("post_id").string
+        trentry = trmap.get(post_id)
+        if trentry and trentry.lang == "en":
+            pnmap[post_id] = post_name
+
+    for item in items:
+        post_name = item.find("post_name").string
+        post_id = item.find("post_id").string
+        trentry = trmap.get(post_id)
+        if trentry and trentry.lang == "de":
+            pnmap[post_id] = pnmap.get(trentry.other_id) or post_name
+
+    return pnmap
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -966,6 +985,8 @@ def main():
 
     with open(args.trmapping) as f:
         trmapping = gentrmap(json.load(f))
+
+    post_name_map = gen_post_name_map(args.input,trmapping)
 
     # init logging
     init()
